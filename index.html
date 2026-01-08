@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Gesture Particles V3 (Clarity Update)</title>
+    <title>Particle Gen V4 (Crystal Clear)</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -21,90 +21,69 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Inter', sans-serif; touch-action: none; }
+        body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Inter', sans-serif; touch-action: none; }
         
         .glass {
-            background: rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            background: rgba(20, 20, 20, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         #webcam-preview {
             transform: scaleX(-1);
             object-fit: cover;
+            border-radius: 8px;
+            opacity: 0.8;
         }
-
-        canvas { display: block; }
 
         .loader {
-            border: 3px solid rgba(255, 255, 255, 0.2);
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top: 3px solid #fbbf24;
             border-radius: 50%;
-            border-top: 3px solid #eab308; /* Yellow for Wulan update */
-            width: 30px;
-            height: 30px;
+            width: 30px; height: 30px;
             animation: spin 1s linear infinite;
         }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="text-white selection:bg-yellow-500 selection:text-black">
+<body class="text-white">
 
     <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black transition-opacity duration-700">
         <div class="loader mb-4"></div>
-        <h2 class="text-lg font-bold tracking-widest animate-pulse text-yellow-400">PREPARING TEXT</h2>
-        <p id="loading-text" class="text-xs text-gray-500 mt-2">Generating 3D Geometry...</p>
+        <div class="text-xs text-gray-500 tracking-widest">CALIBRATING DISPLAY</div>
     </div>
 
     <div class="fixed top-0 left-0 w-full h-full pointer-events-none z-10 p-4 flex flex-col justify-between">
-        
         <div class="flex justify-between items-start pointer-events-auto">
-            <div class="glass p-3 rounded-xl max-w-[200px]">
-                <h1 class="text-sm font-bold bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 to-orange-500">
-                    PARTICLE<span class="font-light text-white">GEN V3</span>
-                </h1>
-                <div class="mt-1 text-[10px] text-gray-300 leading-tight">
-                    <div>🖐 Open: Rainbow</div>
-                    <div>✊ Fist: Saturn</div>
-                    <div>✌️ Peace: <b class="text-yellow-400">Wulan Text</b></div>
-                    <div>🤌 Pinch: Heart</div>
+            <div class="glass p-3 rounded-lg">
+                <div class="text-xs font-bold text-gray-400">GESTURES</div>
+                <div class="text-[10px] text-gray-500 mt-1 leading-relaxed">
+                    🖐 Open: Rainbow<br>
+                    ✊ Fist: Saturn<br>
+                    ✌️ Peace: <span class="text-yellow-400 font-bold">TEXT</span><br>
+                    🤌 Pinch: Heart
                 </div>
             </div>
-
-            <div class="glass p-1 rounded-lg overflow-hidden w-24 h-16 relative shadow-lg">
-                <video id="webcam-preview" class="w-full h-full bg-gray-900" playsinline muted></video>
-                <div class="absolute bottom-1 right-1 w-2 h-2 bg-red-500 rounded-full" id="tracking-status"></div>
+            <div class="glass p-1 rounded-lg w-20 h-14 relative">
+                <video id="webcam-preview" class="w-full h-full bg-black" playsinline muted></video>
+                <div id="tracking-status" class="absolute bottom-1 right-1 w-2 h-2 bg-red-500 rounded-full"></div>
             </div>
         </div>
 
-        <div class="flex justify-between items-end pointer-events-auto">
-            <div class="glass px-4 py-2 rounded-full flex items-center gap-3 transition-all" id="gesture-box">
-                <span id="gesture-label" class="text-sm font-bold text-yellow-400 leading-tight">READY</span>
-            </div>
-
-            <div class="flex gap-2">
-                <button onclick="toggleMagicModal()" class="glass active:bg-white/20 transition px-4 py-2 rounded-lg flex items-center gap-2">
-                    <span class="text-lg">✨</span>
-                    <span class="font-bold text-xs hidden sm:inline">AI Magic</span>
-                </button>
-                <button onclick="toggleFullScreen()" class="glass active:bg-white/20 transition p-2 rounded-lg">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
-                </button>
+        <div class="flex justify-center pointer-events-auto pb-4">
+            <div id="gesture-label" class="glass px-6 py-2 rounded-full text-sm font-bold text-gray-300 tracking-wider shadow-lg transition-all">
+                WAITING...
             </div>
         </div>
     </div>
 
-    <div id="magic-modal" class="fixed inset-0 z-40 bg-black/90 backdrop-blur-sm hidden flex items-center justify-center p-4">
-        <div class="glass p-6 rounded-2xl max-w-sm w-full relative transform transition-all scale-95 opacity-0" id="magic-content">
-            <button onclick="toggleMagicModal()" class="absolute top-3 right-3 text-gray-400 text-xl">×</button>
-            <h2 class="text-xl font-bold mb-1 text-purple-400">AI Generator</h2>
-            <p class="text-xs text-gray-400 mb-4">Describe a shape to create code.</p>
-            <div class="space-y-3">
-                <input type="password" id="gemini-key" placeholder="Google Gemini API Key" class="w-full bg-white/10 border border-white/10 rounded p-2 text-sm text-white focus:border-purple-500 outline-none">
-                <input type="text" id="ai-prompt" placeholder="e.g., 'Spiral Galaxy'" class="w-full bg-white/10 border border-white/10 rounded p-2 text-sm text-white focus:border-purple-500 outline-none">
-                <button onclick="generateAI()" id="generate-btn" class="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-2 rounded-lg text-sm shadow-lg">GENERATE</button>
-            </div>
+    <div id="magic-modal" class="fixed inset-0 z-40 bg-black/90 hidden flex items-center justify-center p-4">
+        <div class="glass p-6 rounded-xl w-full max-w-xs relative">
+            <button onclick="toggleMagicModal()" class="absolute top-2 right-3 text-gray-500 text-xl">×</button>
+            <h3 class="text-sm font-bold text-purple-400 mb-3">AI Particle Gen</h3>
+            <input type="password" id="gemini-key" placeholder="API Key" class="w-full bg-white/5 border border-white/10 rounded p-2 text-xs mb-2 text-white">
+            <input type="text" id="ai-prompt" placeholder="e.g. Spiral Galaxy" class="w-full bg-white/5 border border-white/10 rounded p-2 text-xs mb-3 text-white">
+            <button onclick="generateAI()" id="generate-btn" class="w-full bg-purple-600/80 hover:bg-purple-600 text-white text-xs font-bold py-2 rounded">GENERATE</button>
         </div>
     </div>
 
@@ -119,15 +98,12 @@
         import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
         import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
 
-        // --- OPTIMIZATION SETTINGS ---
         const isMobile = window.innerWidth < 768;
-        // Slightly increased particle count for better text definition
-        const PARTICLE_COUNT = isMobile ? 10000 : 22000;
-        // Adjusted size for sharpness
-        const PARTICLE_SIZE = isMobile ? 0.28 : 0.15;
         
-        const CAM_Z = isMobile ? 50 : 40; 
-        const LERP_SPEED = 0.06;
+        // --- KEY FIX: SMALLER PARTICLES & MORE COUNT FOR CLARITY ---
+        const PARTICLE_COUNT = isMobile ? 12000 : 25000;
+        const PARTICLE_SIZE = isMobile ? 0.2 : 0.12; // Much smaller dots for sharpness
+        const CAM_Z = isMobile ? 55 : 45; 
 
         let scene, camera, renderer, composer, geometry, points;
         let positions, colors, targetPositions, targetColors;
@@ -136,18 +112,15 @@
         let isAIActive = false;
 
         async function init() {
-            document.getElementById('loading-text').innerText = isMobile ? 
-                `Mobile Optimization: ${PARTICLE_COUNT} pts` : 
-                `Desktop Quality: ${PARTICLE_COUNT} pts`;
-
             const container = document.getElementById('canvas-container');
             scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x000000, 0.002);
+            // Less fog to keep text sharp
+            scene.fog = new THREE.FogExp2(0x050505, 0.001); 
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.z = CAM_Z;
 
-            renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, powerPreference: "high-performance" });
+            renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
@@ -157,7 +130,8 @@
             targetPositions = new Float32Array(PARTICLE_COUNT * 3);
             targetColors = new Float32Array(PARTICLE_COUNT * 3);
 
-            setShapeRainbow();
+            setShapeRainbow(); // Init
+            // Sync positions
             for(let i=0; i<PARTICLE_COUNT*3; i++) {
                 positions[i] = targetPositions[i];
                 colors[i] = targetColors[i];
@@ -173,19 +147,18 @@
                 blending: THREE.AdditiveBlending,
                 depthWrite: false,
                 transparent: true,
-                opacity: 0.85
+                opacity: 1.0 // Full opacity for sharpness
             });
 
             points = new THREE.Points(geometry, material);
             scene.add(points);
 
-            // Bloom Settings - Slightly stronger for text pop
+            // --- REDUCED GLOW FOR READABILITY ---
             const renderScene = new RenderPass(scene, camera);
-            const bloomResolution = isMobile ? new THREE.Vector2(window.innerWidth/2, window.innerHeight/2) : new THREE.Vector2(window.innerWidth, window.innerHeight);
-            const bloomPass = new UnrealBloomPass(bloomResolution, 1.5, 0.4, 0.85);
+            const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
             bloomPass.threshold = 0.1;
-            bloomPass.strength = isMobile ? 1.2 : 1.5;
-            bloomPass.radius = 0.6;
+            bloomPass.strength = 0.8; // Lower bloom strength (was 1.5)
+            bloomPass.radius = 0.4;
 
             composer = new EffectComposer(renderer);
             composer.addPass(renderScene);
@@ -199,24 +172,24 @@
             const loader = document.getElementById('loading-screen');
             loader.style.opacity = '0';
             setTimeout(() => loader.remove(), 700);
-
             window.addEventListener('resize', onWindowResize, false);
         }
 
-        // --- SHAPE GENERATORS ---
+        // --- SHAPES ---
 
         function setShapeRainbow() {
             const color = new THREE.Color();
             for (let i = 0; i < PARTICLE_COUNT; i++) {
+                // Sphere
                 const phi = Math.acos(-1 + (2 * i) / PARTICLE_COUNT);
                 const theta = Math.sqrt(PARTICLE_COUNT * Math.PI) * phi;
-                const r = 12 + Math.random() * 4;
+                const r = 14 + Math.random() * 2;
 
                 targetPositions[i * 3] = r * Math.cos(theta) * Math.sin(phi);
                 targetPositions[i * 3 + 1] = r * Math.sin(theta) * Math.sin(phi);
                 targetPositions[i * 3 + 2] = r * Math.cos(phi);
 
-                color.setHSL((i / PARTICLE_COUNT + Date.now()*0.0001)%1, 0.8, 0.6);
+                color.setHSL((i/PARTICLE_COUNT), 0.8, 0.5);
                 targetColors[i * 3] = color.r;
                 targetColors[i * 3 + 1] = color.g;
                 targetColors[i * 3 + 2] = color.b;
@@ -224,67 +197,66 @@
         }
 
         function setShapeSaturn() {
-            const planetColor = new THREE.Color(0x2255ff).multiplyScalar(1.2);
-            const ringColor = new THREE.Color(0xffaa00).multiplyScalar(1.2);
-            const sphereCount = Math.floor(PARTICLE_COUNT * 0.35);
+            const planetC = new THREE.Color(0x0044ff);
+            const ringC = new THREE.Color(0xffaa00);
+            const sphereCount = Math.floor(PARTICLE_COUNT * 0.4);
             
             for (let i = 0; i < PARTICLE_COUNT; i++) {
                 if (i < sphereCount) {
                     const phi = Math.acos(-1 + (2 * i) / sphereCount);
                     const theta = Math.sqrt(sphereCount * Math.PI) * phi;
-                    const r = 7;
+                    const r = 8;
                     targetPositions[i*3] = r * Math.cos(theta) * Math.sin(phi);
                     targetPositions[i*3+1] = r * Math.sin(theta) * Math.sin(phi);
                     targetPositions[i*3+2] = r * Math.cos(phi);
-                    targetColors[i*3] = planetColor.r; targetColors[i*3+1] = planetColor.g; targetColors[i*3+2] = planetColor.b;
+                    targetColors[i*3] = planetC.r; targetColors[i*3+1] = planetC.g; targetColors[i*3+2] = planetC.b;
                 } else {
-                    const angle = Math.random() * Math.PI * 2;
-                    const radius = 10 + Math.random() * 8;
-                    const x = radius * Math.cos(angle);
-                    const z = radius * Math.sin(angle);
+                    const angle = (i - sphereCount) * 0.01; // Spirals
+                    const r = 11 + Math.random() * 8;
+                    const x = r * Math.cos(angle);
+                    const z = r * Math.sin(angle);
                     const tilt = 0.4;
                     targetPositions[i*3] = x;
                     targetPositions[i*3+1] = z * Math.sin(tilt);
                     targetPositions[i*3+2] = z * Math.cos(tilt);
-                    targetColors[i*3] = ringColor.r; targetColors[i*3+1] = ringColor.g; targetColors[i*3+2] = ringColor.b;
+                    targetColors[i*3] = ringC.r; targetColors[i*3+1] = ringC.g; targetColors[i*3+2] = ringC.b;
                 }
             }
         }
 
         function setShapeHeart() {
-            const color = new THREE.Color(0xff0055).multiplyScalar(1.5);
+            const c = new THREE.Color(0xff0044);
             for (let i = 0; i < PARTICLE_COUNT; i++) {
                 const t = Math.random() * Math.PI * 2;
+                // Parametric Heart
                 let x = 16 * Math.pow(Math.sin(t), 3);
                 let y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
-                let z = (Math.random() - 0.5) * 6;
-                const r = Math.random() * 0.2 + 0.8; // Concentrate points slightly towards shell
+                let z = (Math.random() - 0.5) * 4; // Flatish volume
+                
+                // Random fill
+                const r = Math.sqrt(Math.random());
                 x *= r; y *= r; z *= r;
-                const scale = 0.9;
-                targetPositions[i*3] = x * scale;
-                targetPositions[i*3+1] = y * scale;
-                targetPositions[i*3+2] = z * scale;
-                targetColors[i*3] = color.r; targetColors[i*3+1] = color.g; targetColors[i*3+2] = color.b;
+                
+                targetPositions[i*3] = x;
+                targetPositions[i*3+1] = y;
+                targetPositions[i*3+2] = z;
+                targetColors[i*3] = c.r; targetColors[i*3+1] = c.g; targetColors[i*3+2] = c.b;
             }
         }
 
-        // --- IMPROVED TEXT LOGIC (CLARITY FOCUS) ---
+        // --- TEXT LOGIC (CRISP MODE) ---
         async function prepareTextGeometry() {
             const loader = new FontLoader();
             return new Promise((resolve) => {
                 loader.load('https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json', function (font) {
                     
-                    // KEY CHANGE FOR CLARITY: Very thin height (0.4) forces particles to the front face.
-                    const textGeo = new TextGeometry('I LOVE YOU\nWULAN', {
+                    // Creates a LARGE geometry so particles are spread out
+                    const textGeo = new TextGeometry('I LOVE YOU\n   WULAN', {
                         font: font,
-                        size: 3.5,
-                        height: 0.4, // <-- CRITICAL: Makes text "thin" so particles don't get lost on sides
-                        curveSegments: 8,
-                        bevelEnabled: true,
-                        bevelThickness: 0.1,
-                        bevelSize: 0.05,
-                        bevelOffset: 0,
-                        bevelSegments: 3
+                        size: 5.0, // Large text
+                        height: 0, // FLAT (0 depth) prevents layering issues
+                        curveSegments: 4,
+                        bevelEnabled: false // No bevel for cleaner lines
                     });
 
                     textGeo.center();
@@ -299,8 +271,7 @@
                         sampler.sample(tempVec);
                         textPointsCache[i * 3] = tempVec.x;
                         textPointsCache[i * 3 + 1] = tempVec.y;
-                        // We will add artificial Z-depth in setShapeText instead of relying on geometry thickness
-                        textPointsCache[i * 3 + 2] = tempVec.z; 
+                        textPointsCache[i * 3 + 2] = tempVec.z;
                     }
                     resolve();
                 });
@@ -309,148 +280,148 @@
 
         function setShapeText() {
             if (!textPointsCache) return;
-            // Brighter Gold/Orange
-            const color = new THREE.Color(0xffcc00).multiplyScalar(1.3); 
             
-            for (let i = 0; i < PARTICLE_COUNT; i++) {
-                targetPositions[i * 3] = textPointsCache[i * 3];
-                targetPositions[i * 3 + 1] = textPointsCache[i * 3 + 1];
-                
-                // KEY CHANGE FOR CLARITY V2:
-                // Add artificial Z-depth noise. This makes the thin geometry look volumetric
-                // without sacrificing readability on the front face.
-                const zNoise = (Math.random() - 0.5) * 2.5; 
-                targetPositions[i * 3 + 2] = textPointsCache[i * 3 + 2] + zNoise;
+            const colorTop = new THREE.Color(0xffd700); // Gold
+            const colorBot = new THREE.Color(0xff00ff); // Pink/Purple
 
-                targetColors[i * 3] = color.r;
-                targetColors[i * 3 + 1] = color.g;
-                targetColors[i * 3 + 2] = color.b;
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                const px = textPointsCache[i * 3];
+                const py = textPointsCache[i * 3 + 1];
+                const pz = textPointsCache[i * 3 + 2];
+
+                targetPositions[i * 3] = px;
+                targetPositions[i * 3 + 1] = py;
+                targetPositions[i * 3 + 2] = pz; // Keep it flat
+
+                // Gradient based on Y Position to separate lines
+                // Top line (Y > 0) gets Gold, Bottom (Y < 0) gets Pink
+                if (py > 0) {
+                     targetColors[i * 3] = colorTop.r;
+                     targetColors[i * 3 + 1] = colorTop.g;
+                     targetColors[i * 3 + 2] = colorTop.b;
+                } else {
+                     targetColors[i * 3] = colorBot.r;
+                     targetColors[i * 3 + 1] = colorBot.g;
+                     targetColors[i * 3 + 2] = colorBot.b;
+                }
             }
         }
 
-        // --- MEDIAPIPE ---
+        // --- HAND TRACKING ---
         function initMediaPipe() {
             const videoElement = document.getElementById('webcam-preview');
             const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
             
-            hands.setOptions({
-                maxNumHands: 1,
-                modelComplexity: 0,
-                minDetectionConfidence: 0.5,
-                minTrackingConfidence: 0.5
-            });
-
+            hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+            
             hands.onResults((results) => {
                 const status = document.getElementById('tracking-status');
                 if(results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                    status.className = "absolute bottom-1 right-1 w-2 h-2 bg-green-500 rounded-full";
+                    status.classList.replace('bg-red-500', 'bg-green-500');
                     detectGesture(results.multiHandLandmarks[0]);
                 } else {
-                    status.className = "absolute bottom-1 right-1 w-2 h-2 bg-red-500 rounded-full";
+                    status.classList.replace('bg-green-500', 'bg-red-500');
                 }
             });
 
-            const cameraUtils = new Camera(videoElement, {
+            const cam = new Camera(videoElement, {
                 onFrame: async () => { await hands.send({image: videoElement}); },
                 width: 640, height: 480
             });
-            cameraUtils.start();
+            cam.start();
         }
 
-        function detectGesture(landmarks) {
+        function detectGesture(lm) {
             if(isAIActive) return;
 
             const label = document.getElementById('gesture-label');
-            const gestureBox = document.getElementById('gesture-box');
             
-            const indexUp = landmarks[8].y < landmarks[6].y;
-            const middleUp = landmarks[12].y < landmarks[10].y;
-            const ringUp = landmarks[16].y < landmarks[14].y;
-            const pinkyUp = landmarks[20].y < landmarks[18].y;
-            const dHeart = Math.hypot(landmarks[4].x - landmarks[8].x, landmarks[4].y - landmarks[8].y);
+            // Simple logic
+            const tips = [8, 12, 16, 20];
+            const pips = [6, 10, 14, 18];
+            const fingersUp = tips.map(t => lm[t].y < lm[t-2].y); // Compare tip to PIP
             
-            let newShape = currentShape;
-            let newLabel = label.innerText;
-            let colorClass = "";
+            const indexUp = fingersUp[0];
+            const middleUp = fingersUp[1];
+            const ringUp = fingersUp[2];
+            const pinkyUp = fingersUp[3];
 
-            if (dHeart < 0.06 && !middleUp) {
-                newShape = 'heart'; newLabel = "HEART"; colorClass = "text-pink-500";
+            // Heart Pinch Dist
+            const pinch = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y) < 0.05;
+
+            let shape = currentShape;
+            let txt = label.innerText;
+            let col = "";
+
+            if (pinch) {
+                shape = 'heart'; txt = "HEART FOR WULAN"; col = "text-pink-500";
             } else if (!indexUp && !middleUp && !ringUp && !pinkyUp) {
-                newShape = 'saturn'; newLabel = "SATURN"; colorClass = "text-blue-500";
+                shape = 'saturn'; txt = "SATURN MODE"; col = "text-blue-500";
             } else if (indexUp && middleUp && !ringUp && !pinkyUp) {
-                newShape = 'text'; 
-                newLabel = "I LOVE YOU WULAN"; // Update Label
-                colorClass = "text-yellow-400 font-extrabold";
+                shape = 'text'; txt = "I LOVE YOU WULAN"; col = "text-yellow-400";
             } else if (indexUp && middleUp && ringUp && pinkyUp) {
-                newShape = 'rainbow'; newLabel = "RAINBOW"; colorClass = "text-purple-400";
+                shape = 'rainbow'; txt = "RAINBOW SPHERE"; col = "text-green-400";
             }
 
-            if (newShape !== currentShape) {
-                currentShape = newShape;
-                label.innerText = newLabel;
-                label.className = `text-sm ${colorClass} leading-tight`;
+            if (shape !== currentShape) {
+                currentShape = shape;
+                label.innerText = txt;
+                label.className = `glass px-6 py-2 rounded-full text-sm font-bold tracking-wider shadow-lg transition-all ${col}`;
                 
-                // UI Pop effect for Text mode
-                if(newShape === 'text') {
-                     gestureBox.classList.add('bg-yellow-400/20', 'scale-105');
-                     setTimeout(() => gestureBox.classList.remove('scale-105'), 200);
-                } else {
-                     gestureBox.classList.remove('bg-yellow-400/20');
-                }
-
-                if(currentShape === 'heart') setShapeHeart();
-                if(currentShape === 'saturn') setShapeSaturn();
-                if(currentShape === 'text') setShapeText();
-                if(currentShape === 'rainbow') setShapeRainbow();
+                if(shape === 'heart') setShapeHeart();
+                if(shape === 'saturn') setShapeSaturn();
+                if(shape === 'text') setShapeText();
+                if(shape === 'rainbow') setShapeRainbow();
             }
         }
 
-        // --- AI LOGIC (Unchanged) ---
+        // --- AI STUFF ---
         window.toggleMagicModal = () => {
-            const modal = document.getElementById('magic-modal');
-            const content = document.getElementById('magic-content');
-            if(modal.classList.contains('hidden')) {
-                modal.classList.remove('hidden');
-                setTimeout(() => { content.classList.remove('scale-95', 'opacity-0'); content.classList.add('scale-100', 'opacity-100'); }, 10);
-            } else {
-                content.classList.remove('scale-100', 'opacity-100'); content.classList.add('scale-95', 'opacity-0');
-                setTimeout(() => modal.classList.add('hidden'), 300);
-            }
+            const m = document.getElementById('magic-modal');
+            m.classList.toggle('hidden');
         }
 
         window.generateAI = async () => {
-            const key = document.getElementById('gemini-key').value;
-            const prompt = document.getElementById('ai-prompt').value;
-            const btn = document.getElementById('generate-btn');
-            if(!key || !prompt) return alert("API Key & Prompt required!");
-            btn.innerText = "THINKING..."; btn.disabled = true;
-            const systemPrompt = `Generate JS loop code for particle positions (x,y,z) and colors (r,g,b) for shape: "${prompt}". Context: Loop variable 'i' from 0 to 'count'. Arrays 'targetPositions', 'targetColors'. Radius approx 15. Output raw math code only. No functions.`;
+            const k = document.getElementById('gemini-key').value;
+            const p = document.getElementById('ai-prompt').value;
+            const b = document.getElementById('generate-btn');
+            if(!k || !p) return alert('Key & Prompt Needed');
+            
+            b.innerText = "...";
             try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({contents: [{parts: [{text: systemPrompt}]}]}) });
-                const data = await res.json();
-                let code = data.candidates[0].content.parts[0].text.replace(/```javascript|```/g, '').trim();
-                const f = new Function('targetPositions', 'targetColors', 'count', `for(let i=0; i<count; i++) { ${code} }`);
-                f(targetPositions, targetColors, PARTICLE_COUNT);
-                isAIActive = true; currentShape = 'ai'; toggleMagicModal(); document.getElementById('gesture-label').innerText = "AI GENERATED";
-            } catch(e) { alert("Error: Check API Key"); } finally { btn.innerText = "GENERATE"; btn.disabled = false; }
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${k}`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({contents: [{parts: [{text: `JS loop code for particles (i, count, targetPositions, targetColors) for shape: ${p}. raw math only.`}]}]})
+                });
+                const d = await res.json();
+                let c = d.candidates[0].content.parts[0].text.replace(/```javascript|```/g, '');
+                new Function('targetPositions', 'targetColors', 'count', `for(let i=0;i<count;i++){${c}}`)(targetPositions, targetColors, PARTICLE_COUNT);
+                isAIActive = true; currentShape = 'ai'; toggleMagicModal();
+            } catch(e){ alert('Error'); } 
+            b.innerText = "GENERATE";
         }
 
+        // --- ANIMATION ---
         function animate() {
             requestAnimationFrame(animate);
-            const positionsAttribute = geometry.attributes.position;
-            const colorsAttribute = geometry.attributes.color;
-
-            for (let i = 0; i < PARTICLE_COUNT; i++) {
-                const idx = i * 3;
-                positions[idx] += (targetPositions[idx] - positions[idx]) * LERP_SPEED;
-                positions[idx+1] += (targetPositions[idx+1] - positions[idx+1]) * LERP_SPEED;
-                positions[idx+2] += (targetPositions[idx+2] - positions[idx+2]) * LERP_SPEED;
-                colors[idx] += (targetColors[idx] - colors[idx]) * LERP_SPEED;
-                colors[idx+1] += (targetColors[idx+1] - colors[idx+1]) * LERP_SPEED;
-                colors[idx+2] += (targetColors[idx+2] - colors[idx+2]) * LERP_SPEED;
+            
+            // Lerp
+            for (let i = 0; i < PARTICLE_COUNT * 3; i++) {
+                positions[i] += (targetPositions[i] - positions[i]) * 0.08;
+                colors[i] += (targetColors[i] - colors[i]) * 0.08;
             }
-            positionsAttribute.needsUpdate = true; colorsAttribute.needsUpdate = true;
-            points.rotation.y += 0.002; // Slow rotation
+            
+            geometry.attributes.position.needsUpdate = true;
+            geometry.attributes.color.needsUpdate = true;
+            
+            // Rotate gently unless it's text (keep text readable)
+            if(currentShape !== 'text') {
+                points.rotation.y += 0.002;
+            } else {
+                // Gentle sway for text
+                points.rotation.y = Math.sin(Date.now() * 0.001) * 0.1;
+            }
+            
             composer.render();
         }
 
@@ -460,7 +431,6 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
             composer.setSize(window.innerWidth, window.innerHeight);
         }
-        window.toggleFullScreen = () => { !document.fullscreenElement ? document.documentElement.requestFullscreen() : document.exitFullscreen(); }
 
         init();
     </script>
