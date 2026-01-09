@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Particle Gen V4 (Crystal Clear)</title>
+    <title>Particle Gen V5 (Zoomable)</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -44,13 +44,27 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 100% { transform: rotate(360deg); } }
+        
+        /* Instruksi Zoom */
+        .zoom-hint {
+            position: absolute;
+            bottom: 80px;
+            width: 100%;
+            text-align: center;
+            font-size: 10px;
+            color: rgba(255,255,255,0.3);
+            pointer-events: none;
+            animation: fadeOut 5s forwards;
+            animation-delay: 3s;
+        }
+        @keyframes fadeOut { to { opacity: 0; } }
     </style>
 </head>
 <body class="text-white">
 
     <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black transition-opacity duration-700">
         <div class="loader mb-4"></div>
-        <div class="text-xs text-gray-500 tracking-widest">CALIBRATING DISPLAY</div>
+        <div class="text-xs text-gray-500 tracking-widest">INITIALIZING CONTROLS</div>
     </div>
 
     <div class="fixed top-0 left-0 w-full h-full pointer-events-none z-10 p-4 flex flex-col justify-between">
@@ -70,6 +84,10 @@
             </div>
         </div>
 
+        <div class="zoom-hint">
+            💡 Pinch to Zoom • Drag to Rotate
+        </div>
+
         <div class="flex justify-center pointer-events-auto pb-4">
             <div id="gesture-label" class="glass px-6 py-2 rounded-full text-sm font-bold text-gray-300 tracking-wider shadow-lg transition-all">
                 WAITING...
@@ -87,10 +105,12 @@
         </div>
     </div>
 
-    <div id="canvas-container" class="absolute inset-0 z-0"></div>
+    <div id="canvas-container" class="absolute inset-0 z-0 cursor-move"></div>
 
     <script type="module">
         import * as THREE from 'three';
+        // IMPORT CONTROLS
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
         import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -99,13 +119,11 @@
         import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
 
         const isMobile = window.innerWidth < 768;
-        
-        // --- KEY FIX: SMALLER PARTICLES & MORE COUNT FOR CLARITY ---
         const PARTICLE_COUNT = isMobile ? 12000 : 25000;
-        const PARTICLE_SIZE = isMobile ? 0.2 : 0.12; // Much smaller dots for sharpness
+        const PARTICLE_SIZE = isMobile ? 0.2 : 0.12; 
         const CAM_Z = isMobile ? 55 : 45; 
 
-        let scene, camera, renderer, composer, geometry, points;
+        let scene, camera, renderer, composer, geometry, points, controls; // Added controls variable
         let positions, colors, targetPositions, targetColors;
         let textPointsCache = null;
         let currentShape = 'rainbow';
@@ -114,7 +132,6 @@
         async function init() {
             const container = document.getElementById('canvas-container');
             scene = new THREE.Scene();
-            // Less fog to keep text sharp
             scene.fog = new THREE.FogExp2(0x050505, 0.001); 
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -125,13 +142,23 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
 
+            // --- ADD ORBIT CONTROLS ---
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true; // Smooth motion
+            controls.dampingFactor = 0.05;
+            controls.enableZoom = true;
+            controls.enablePan = false; // Disable panning to keep object centered
+            controls.minDistance = 10;  // Don't go too close
+            controls.maxDistance = 100; // Don't go too far
+            controls.autoRotate = false;
+
+            // Particles Setup
             positions = new Float32Array(PARTICLE_COUNT * 3);
             colors = new Float32Array(PARTICLE_COUNT * 3);
             targetPositions = new Float32Array(PARTICLE_COUNT * 3);
             targetColors = new Float32Array(PARTICLE_COUNT * 3);
 
-            setShapeRainbow(); // Init
-            // Sync positions
+            setShapeRainbow();
             for(let i=0; i<PARTICLE_COUNT*3; i++) {
                 positions[i] = targetPositions[i];
                 colors[i] = targetColors[i];
@@ -147,17 +174,17 @@
                 blending: THREE.AdditiveBlending,
                 depthWrite: false,
                 transparent: true,
-                opacity: 1.0 // Full opacity for sharpness
+                opacity: 1.0
             });
 
             points = new THREE.Points(geometry, material);
             scene.add(points);
 
-            // --- REDUCED GLOW FOR READABILITY ---
+            // Post Processing
             const renderScene = new RenderPass(scene, camera);
             const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
             bloomPass.threshold = 0.1;
-            bloomPass.strength = 0.8; // Lower bloom strength (was 1.5)
+            bloomPass.strength = 0.8;
             bloomPass.radius = 0.4;
 
             composer = new EffectComposer(renderer);
@@ -175,12 +202,11 @@
             window.addEventListener('resize', onWindowResize, false);
         }
 
-        // --- SHAPES ---
+        // --- SHAPE GENERATORS ---
 
         function setShapeRainbow() {
             const color = new THREE.Color();
             for (let i = 0; i < PARTICLE_COUNT; i++) {
-                // Sphere
                 const phi = Math.acos(-1 + (2 * i) / PARTICLE_COUNT);
                 const theta = Math.sqrt(PARTICLE_COUNT * Math.PI) * phi;
                 const r = 14 + Math.random() * 2;
@@ -211,7 +237,7 @@
                     targetPositions[i*3+2] = r * Math.cos(phi);
                     targetColors[i*3] = planetC.r; targetColors[i*3+1] = planetC.g; targetColors[i*3+2] = planetC.b;
                 } else {
-                    const angle = (i - sphereCount) * 0.01; // Spirals
+                    const angle = (i - sphereCount) * 0.01;
                     const r = 11 + Math.random() * 8;
                     const x = r * Math.cos(angle);
                     const z = r * Math.sin(angle);
@@ -228,15 +254,11 @@
             const c = new THREE.Color(0xff0044);
             for (let i = 0; i < PARTICLE_COUNT; i++) {
                 const t = Math.random() * Math.PI * 2;
-                // Parametric Heart
                 let x = 16 * Math.pow(Math.sin(t), 3);
                 let y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
-                let z = (Math.random() - 0.5) * 4; // Flatish volume
-                
-                // Random fill
+                let z = (Math.random() - 0.5) * 4;
                 const r = Math.sqrt(Math.random());
                 x *= r; y *= r; z *= r;
-                
                 targetPositions[i*3] = x;
                 targetPositions[i*3+1] = y;
                 targetPositions[i*3+2] = z;
@@ -244,29 +266,22 @@
             }
         }
 
-        // --- TEXT LOGIC (CRISP MODE) ---
         async function prepareTextGeometry() {
             const loader = new FontLoader();
             return new Promise((resolve) => {
                 loader.load('https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json', function (font) {
-                    
-                    // Creates a LARGE geometry so particles are spread out
                     const textGeo = new TextGeometry('I LOVE YOU\n   WULAN', {
                         font: font,
-                        size: 5.0, // Large text
-                        height: 0, // FLAT (0 depth) prevents layering issues
+                        size: 5.0,
+                        height: 0, 
                         curveSegments: 4,
-                        bevelEnabled: false // No bevel for cleaner lines
+                        bevelEnabled: false
                     });
-
                     textGeo.center();
-
                     const mesh = new THREE.Mesh(textGeo, new THREE.MeshBasicMaterial());
                     const sampler = new MeshSurfaceSampler(mesh).build();
-
                     textPointsCache = new Float32Array(PARTICLE_COUNT * 3);
                     const tempVec = new THREE.Vector3();
-
                     for (let i = 0; i < PARTICLE_COUNT; i++) {
                         sampler.sample(tempVec);
                         textPointsCache[i * 3] = tempVec.x;
@@ -280,29 +295,21 @@
 
         function setShapeText() {
             if (!textPointsCache) return;
-            
-            const colorTop = new THREE.Color(0xffd700); // Gold
-            const colorBot = new THREE.Color(0xff00ff); // Pink/Purple
+            const colorTop = new THREE.Color(0xffd700);
+            const colorBot = new THREE.Color(0xff00ff);
 
             for (let i = 0; i < PARTICLE_COUNT; i++) {
                 const px = textPointsCache[i * 3];
                 const py = textPointsCache[i * 3 + 1];
                 const pz = textPointsCache[i * 3 + 2];
-
                 targetPositions[i * 3] = px;
                 targetPositions[i * 3 + 1] = py;
-                targetPositions[i * 3 + 2] = pz; // Keep it flat
+                targetPositions[i * 3 + 2] = pz;
 
-                // Gradient based on Y Position to separate lines
-                // Top line (Y > 0) gets Gold, Bottom (Y < 0) gets Pink
                 if (py > 0) {
-                     targetColors[i * 3] = colorTop.r;
-                     targetColors[i * 3 + 1] = colorTop.g;
-                     targetColors[i * 3 + 2] = colorTop.b;
+                     targetColors[i * 3] = colorTop.r; targetColors[i * 3 + 1] = colorTop.g; targetColors[i * 3 + 2] = colorTop.b;
                 } else {
-                     targetColors[i * 3] = colorBot.r;
-                     targetColors[i * 3 + 1] = colorBot.g;
-                     targetColors[i * 3 + 2] = colorBot.b;
+                     targetColors[i * 3] = colorBot.r; targetColors[i * 3 + 1] = colorBot.g; targetColors[i * 3 + 2] = colorBot.b;
                 }
             }
         }
@@ -311,9 +318,7 @@
         function initMediaPipe() {
             const videoElement = document.getElementById('webcam-preview');
             const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
-            
             hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
-            
             hands.onResults((results) => {
                 const status = document.getElementById('tracking-status');
                 if(results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
@@ -323,30 +328,20 @@
                     status.classList.replace('bg-green-500', 'bg-red-500');
                 }
             });
-
-            const cam = new Camera(videoElement, {
-                onFrame: async () => { await hands.send({image: videoElement}); },
-                width: 640, height: 480
-            });
+            const cam = new Camera(videoElement, { onFrame: async () => { await hands.send({image: videoElement}); }, width: 640, height: 480 });
             cam.start();
         }
 
         function detectGesture(lm) {
             if(isAIActive) return;
-
             const label = document.getElementById('gesture-label');
-            
-            // Simple logic
             const tips = [8, 12, 16, 20];
-            const pips = [6, 10, 14, 18];
-            const fingersUp = tips.map(t => lm[t].y < lm[t-2].y); // Compare tip to PIP
+            const fingersUp = tips.map(t => lm[t].y < lm[t-2].y);
             
             const indexUp = fingersUp[0];
             const middleUp = fingersUp[1];
             const ringUp = fingersUp[2];
             const pinkyUp = fingersUp[3];
-
-            // Heart Pinch Dist
             const pinch = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y) < 0.05;
 
             let shape = currentShape;
@@ -375,18 +370,14 @@
             }
         }
 
-        // --- AI STUFF ---
-        window.toggleMagicModal = () => {
-            const m = document.getElementById('magic-modal');
-            m.classList.toggle('hidden');
-        }
+        // --- AI ---
+        window.toggleMagicModal = () => { document.getElementById('magic-modal').classList.toggle('hidden'); }
 
         window.generateAI = async () => {
             const k = document.getElementById('gemini-key').value;
             const p = document.getElementById('ai-prompt').value;
             const b = document.getElementById('generate-btn');
             if(!k || !p) return alert('Key & Prompt Needed');
-            
             b.innerText = "...";
             try {
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${k}`, {
@@ -401,11 +392,12 @@
             b.innerText = "GENERATE";
         }
 
-        // --- ANIMATION ---
         function animate() {
             requestAnimationFrame(animate);
             
-            // Lerp
+            // UPDATE CONTROLS (Important for Damping)
+            controls.update();
+
             for (let i = 0; i < PARTICLE_COUNT * 3; i++) {
                 positions[i] += (targetPositions[i] - positions[i]) * 0.08;
                 colors[i] += (targetColors[i] - colors[i]) * 0.08;
@@ -414,11 +406,10 @@
             geometry.attributes.position.needsUpdate = true;
             geometry.attributes.color.needsUpdate = true;
             
-            // Rotate gently unless it's text (keep text readable)
+            // Auto rotate the object slightly for effect, user can still rotate camera
             if(currentShape !== 'text') {
                 points.rotation.y += 0.002;
             } else {
-                // Gentle sway for text
                 points.rotation.y = Math.sin(Date.now() * 0.001) * 0.1;
             }
             
