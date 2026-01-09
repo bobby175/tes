@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Particle Gen V5 (Zoomable)</title>
+    <title>Particle Gen V6 (AI Voice Command)</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -24,84 +24,98 @@
         body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Inter', sans-serif; touch-action: none; }
         
         .glass {
-            background: rgba(20, 20, 20, 0.6);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(10, 10, 10, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }
 
         #webcam-preview {
             transform: scaleX(-1);
             object-fit: cover;
             border-radius: 8px;
-            opacity: 0.8;
+            opacity: 0.9;
         }
 
         .loader {
             border: 3px solid rgba(255, 255, 255, 0.1);
-            border-top: 3px solid #fbbf24;
+            border-top: 3px solid #a855f7;
             border-radius: 50%;
             width: 30px; height: 30px;
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 100% { transform: rotate(360deg); } }
-        
-        /* Instruksi Zoom */
-        .zoom-hint {
-            position: absolute;
-            bottom: 80px;
-            width: 100%;
-            text-align: center;
-            font-size: 10px;
-            color: rgba(255,255,255,0.3);
-            pointer-events: none;
-            animation: fadeOut 5s forwards;
-            animation-delay: 3s;
+
+        /* Input Bar Animation */
+        .ai-bar:focus-within {
+            border-color: #a855f7;
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
         }
-        @keyframes fadeOut { to { opacity: 0; } }
+        
+        .mic-active {
+            animation: pulse-red 1.5s infinite;
+            background-color: rgba(239, 68, 68, 0.2) !important;
+            border-color: #ef4444 !important;
+            color: #ef4444 !important;
+        }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
     </style>
 </head>
 <body class="text-white">
 
     <div id="loading-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black transition-opacity duration-700">
         <div class="loader mb-4"></div>
-        <div class="text-xs text-gray-500 tracking-widest">INITIALIZING CONTROLS</div>
+        <div class="text-xs text-gray-500 tracking-widest">CONNECTING AI SYSTEMS</div>
     </div>
 
-    <div class="fixed top-0 left-0 w-full h-full pointer-events-none z-10 p-4 flex flex-col justify-between">
+    <div id="key-modal" class="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-6 hidden">
+        <div class="glass p-6 rounded-xl w-full max-w-md text-center">
+            <h2 class="text-xl font-bold text-purple-400 mb-2">Setup AI Access</h2>
+            <p class="text-gray-400 text-xs mb-4">Enter your Google Gemini API Key once. It will be saved securely in your browser.</p>
+            <input type="password" id="api-input" placeholder="Paste Gemini API Key Here" class="w-full bg-white/5 border border-white/20 rounded-lg p-3 text-white focus:outline-none focus:border-purple-500 mb-4">
+            <button onclick="saveKey()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded-lg transition">SAVE & START</button>
+            <p class="mt-4 text-[10px] text-gray-600">Don't have one? Search "Google AI Studio API Key"</p>
+        </div>
+    </div>
+
+    <div class="fixed top-0 left-0 w-full h-full pointer-events-none z-10 flex flex-col justify-between p-4">
+        
         <div class="flex justify-between items-start pointer-events-auto">
-            <div class="glass p-3 rounded-lg">
-                <div class="text-xs font-bold text-gray-400">GESTURES</div>
-                <div class="text-[10px] text-gray-500 mt-1 leading-relaxed">
-                    🖐 Open: Rainbow<br>
-                    ✊ Fist: Saturn<br>
-                    ✌️ Peace: <span class="text-yellow-400 font-bold">TEXT</span><br>
-                    🤌 Pinch: Heart
+            <div class="flex gap-2">
+                <button onclick="openKeyModal()" class="glass p-3 rounded-xl hover:bg-white/10 transition" title="Change API Key">
+                    🔑
+                </button>
+                <div class="glass px-4 py-3 rounded-xl flex flex-col justify-center">
+                    <span id="status-text" class="text-xs font-bold text-gray-300">SYSTEM READY</span>
+                    <span id="gesture-text" class="text-[10px] text-purple-400 uppercase tracking-wider">Waiting for hand...</span>
                 </div>
             </div>
-            <div class="glass p-1 rounded-lg w-20 h-14 relative">
+
+            <div class="glass p-1 rounded-xl w-24 h-16 relative overflow-hidden">
                 <video id="webcam-preview" class="w-full h-full bg-black" playsinline muted></video>
-                <div id="tracking-status" class="absolute bottom-1 right-1 w-2 h-2 bg-red-500 rounded-full"></div>
+                <div id="tracking-dot" class="absolute bottom-1 right-1 w-2 h-2 bg-red-500 rounded-full"></div>
             </div>
         </div>
 
-        <div class="zoom-hint">
-            💡 Pinch to Zoom • Drag to Rotate
-        </div>
-
-        <div class="flex justify-center pointer-events-auto pb-4">
-            <div id="gesture-label" class="glass px-6 py-2 rounded-full text-sm font-bold text-gray-300 tracking-wider shadow-lg transition-all">
-                WAITING...
+        <div class="pointer-events-auto w-full max-w-lg mx-auto mb-2 relative">
+            <div class="glass ai-bar rounded-full p-2 flex items-center gap-2 transition-all duration-300">
+                <button id="mic-btn" onclick="toggleVoice()" class="p-3 rounded-full hover:bg-white/10 text-gray-400 transition">
+                    🎤
+                </button>
+                <input type="text" id="ai-prompt" placeholder="Describe a shape (e.g., 'Spiral Galaxy')..." 
+                    class="bg-transparent border-none outline-none text-white text-sm flex-grow placeholder-gray-500"
+                    onkeypress="if(event.key === 'Enter') triggerAI()">
+                <button onclick="triggerAI()" id="send-btn" class="p-3 rounded-full bg-purple-600 hover:bg-purple-500 text-white transition shadow-lg shadow-purple-900/40">
+                    ✨
+                </button>
             </div>
-        </div>
-    </div>
-
-    <div id="magic-modal" class="fixed inset-0 z-40 bg-black/90 hidden flex items-center justify-center p-4">
-        <div class="glass p-6 rounded-xl w-full max-w-xs relative">
-            <button onclick="toggleMagicModal()" class="absolute top-2 right-3 text-gray-500 text-xl">×</button>
-            <h3 class="text-sm font-bold text-purple-400 mb-3">AI Particle Gen</h3>
-            <input type="password" id="gemini-key" placeholder="API Key" class="w-full bg-white/5 border border-white/10 rounded p-2 text-xs mb-2 text-white">
-            <input type="text" id="ai-prompt" placeholder="e.g. Spiral Galaxy" class="w-full bg-white/5 border border-white/10 rounded p-2 text-xs mb-3 text-white">
-            <button onclick="generateAI()" id="generate-btn" class="w-full bg-purple-600/80 hover:bg-purple-600 text-white text-xs font-bold py-2 rounded">GENERATE</button>
+            <div class="text-center mt-2 text-[10px] text-gray-500">
+                Tips: "Zoom with pinch" • "Rotate with drag" • "Speak to AI"
+            </div>
         </div>
     </div>
 
@@ -109,7 +123,6 @@
 
     <script type="module">
         import * as THREE from 'three';
-        // IMPORT CONTROLS
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -118,53 +131,72 @@
         import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
         import { MeshSurfaceSampler } from 'three/addons/math/MeshSurfaceSampler.js';
 
+        // --- CONFIG ---
         const isMobile = window.innerWidth < 768;
         const PARTICLE_COUNT = isMobile ? 12000 : 25000;
-        const PARTICLE_SIZE = isMobile ? 0.2 : 0.12; 
-        const CAM_Z = isMobile ? 55 : 45; 
-
-        let scene, camera, renderer, composer, geometry, points, controls; // Added controls variable
+        const PARTICLE_SIZE = isMobile ? 0.22 : 0.12; 
+        
+        let scene, camera, renderer, composer, points, controls;
         let positions, colors, targetPositions, targetColors;
         let textPointsCache = null;
         let currentShape = 'rainbow';
-        let isAIActive = false;
+        let isAIProcessing = false;
 
+        // --- API KEY MANAGEMENT ---
+        window.saveKey = () => {
+            const key = document.getElementById('api-input').value.trim();
+            if(key) {
+                localStorage.setItem('geminiKey', key);
+                document.getElementById('key-modal').classList.add('hidden');
+                alert("Key Saved! Try typing or saying a shape.");
+            }
+        };
+
+        window.openKeyModal = () => {
+            document.getElementById('key-modal').classList.remove('hidden');
+        };
+
+        function checkKey() {
+            if(!localStorage.getItem('geminiKey')) {
+                openKeyModal();
+            }
+        }
+
+        // --- INIT THREE.JS ---
         async function init() {
             const container = document.getElementById('canvas-container');
             scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x050505, 0.001); 
+            scene.fog = new THREE.FogExp2(0x050505, 0.0015);
 
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.z = CAM_Z;
+            camera.position.z = isMobile ? 55 : 45;
 
             renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
 
-            // --- ADD ORBIT CONTROLS ---
+            // Controls (Zoom/Rotate)
             controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true; // Smooth motion
+            controls.enableDamping = true;
             controls.dampingFactor = 0.05;
-            controls.enableZoom = true;
-            controls.enablePan = false; // Disable panning to keep object centered
-            controls.minDistance = 10;  // Don't go too close
-            controls.maxDistance = 100; // Don't go too far
-            controls.autoRotate = false;
+            controls.enablePan = false;
+            controls.minDistance = 10;
+            controls.maxDistance = 100;
 
-            // Particles Setup
+            // Particles
             positions = new Float32Array(PARTICLE_COUNT * 3);
             colors = new Float32Array(PARTICLE_COUNT * 3);
             targetPositions = new Float32Array(PARTICLE_COUNT * 3);
             targetColors = new Float32Array(PARTICLE_COUNT * 3);
 
-            setShapeRainbow();
+            setShapeRainbow(); // Init
             for(let i=0; i<PARTICLE_COUNT*3; i++) {
                 positions[i] = targetPositions[i];
                 colors[i] = targetColors[i];
             }
 
-            geometry = new THREE.BufferGeometry();
+            const geometry = new THREE.BufferGeometry();
             geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
             geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
@@ -173,19 +205,18 @@
                 vertexColors: true,
                 blending: THREE.AdditiveBlending,
                 depthWrite: false,
-                transparent: true,
-                opacity: 1.0
+                transparent: true
             });
 
             points = new THREE.Points(geometry, material);
             scene.add(points);
 
-            // Post Processing
+            // Post Processing (Glow)
             const renderScene = new RenderPass(scene, camera);
             const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-            bloomPass.threshold = 0.1;
-            bloomPass.strength = 0.8;
-            bloomPass.radius = 0.4;
+            bloomPass.threshold = 0.15;
+            bloomPass.strength = 0.9;
+            bloomPass.radius = 0.5;
 
             composer = new EffectComposer(renderer);
             composer.addPass(renderScene);
@@ -195,74 +226,61 @@
 
             animate();
             initMediaPipe();
+            checkKey();
 
+            // Hide Loader
             const loader = document.getElementById('loading-screen');
             loader.style.opacity = '0';
             setTimeout(() => loader.remove(), 700);
-            window.addEventListener('resize', onWindowResize, false);
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                composer.setSize(window.innerWidth, window.innerHeight);
+            });
         }
 
-        // --- SHAPE GENERATORS ---
-
+        // --- SHAPE LOGIC ---
         function setShapeRainbow() {
             const color = new THREE.Color();
             for (let i = 0; i < PARTICLE_COUNT; i++) {
                 const phi = Math.acos(-1 + (2 * i) / PARTICLE_COUNT);
                 const theta = Math.sqrt(PARTICLE_COUNT * Math.PI) * phi;
                 const r = 14 + Math.random() * 2;
-
                 targetPositions[i * 3] = r * Math.cos(theta) * Math.sin(phi);
                 targetPositions[i * 3 + 1] = r * Math.sin(theta) * Math.sin(phi);
                 targetPositions[i * 3 + 2] = r * Math.cos(phi);
-
                 color.setHSL((i/PARTICLE_COUNT), 0.8, 0.5);
-                targetColors[i * 3] = color.r;
-                targetColors[i * 3 + 1] = color.g;
-                targetColors[i * 3 + 2] = color.b;
+                targetColors[i * 3] = color.r; targetColors[i * 3 + 1] = color.g; targetColors[i * 3 + 2] = color.b;
             }
         }
 
         function setShapeSaturn() {
-            const planetC = new THREE.Color(0x0044ff);
-            const ringC = new THREE.Color(0xffaa00);
-            const sphereCount = Math.floor(PARTICLE_COUNT * 0.4);
-            
+            const pc = new THREE.Color(0x0044ff); const rc = new THREE.Color(0xffaa00);
+            const sc = Math.floor(PARTICLE_COUNT * 0.4);
             for (let i = 0; i < PARTICLE_COUNT; i++) {
-                if (i < sphereCount) {
-                    const phi = Math.acos(-1 + (2 * i) / sphereCount);
-                    const theta = Math.sqrt(sphereCount * Math.PI) * phi;
-                    const r = 8;
-                    targetPositions[i*3] = r * Math.cos(theta) * Math.sin(phi);
-                    targetPositions[i*3+1] = r * Math.sin(theta) * Math.sin(phi);
-                    targetPositions[i*3+2] = r * Math.cos(phi);
-                    targetColors[i*3] = planetC.r; targetColors[i*3+1] = planetC.g; targetColors[i*3+2] = planetC.b;
+                if (i < sc) {
+                    const phi = Math.acos(-1 + (2 * i) / sc); const theta = Math.sqrt(sc * Math.PI) * phi; const r = 8;
+                    targetPositions[i*3] = r*Math.cos(theta)*Math.sin(phi); targetPositions[i*3+1] = r*Math.sin(theta)*Math.sin(phi); targetPositions[i*3+2] = r*Math.cos(phi);
+                    targetColors[i*3]=pc.r; targetColors[i*3+1]=pc.g; targetColors[i*3+2]=pc.b;
                 } else {
-                    const angle = (i - sphereCount) * 0.01;
-                    const r = 11 + Math.random() * 8;
-                    const x = r * Math.cos(angle);
-                    const z = r * Math.sin(angle);
-                    const tilt = 0.4;
-                    targetPositions[i*3] = x;
-                    targetPositions[i*3+1] = z * Math.sin(tilt);
-                    targetPositions[i*3+2] = z * Math.cos(tilt);
-                    targetColors[i*3] = ringC.r; targetColors[i*3+1] = ringC.g; targetColors[i*3+2] = ringC.b;
+                    const ang = (i-sc)*0.01; const r = 11 + Math.random()*8;
+                    const x = r*Math.cos(ang); const z = r*Math.sin(ang);
+                    targetPositions[i*3]=x; targetPositions[i*3+1]=z*Math.sin(0.4); targetPositions[i*3+2]=z*Math.cos(0.4);
+                    targetColors[i*3]=rc.r; targetColors[i*3+1]=rc.g; targetColors[i*3+2]=rc.b;
                 }
             }
         }
 
         function setShapeHeart() {
             const c = new THREE.Color(0xff0044);
-            for (let i = 0; i < PARTICLE_COUNT; i++) {
-                const t = Math.random() * Math.PI * 2;
-                let x = 16 * Math.pow(Math.sin(t), 3);
-                let y = 13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t);
-                let z = (Math.random() - 0.5) * 4;
-                const r = Math.sqrt(Math.random());
-                x *= r; y *= r; z *= r;
-                targetPositions[i*3] = x;
-                targetPositions[i*3+1] = y;
-                targetPositions[i*3+2] = z;
-                targetColors[i*3] = c.r; targetColors[i*3+1] = c.g; targetColors[i*3+2] = c.b;
+            for(let i=0; i<PARTICLE_COUNT; i++) {
+                const t = Math.random()*Math.PI*2;
+                let x=16*Math.pow(Math.sin(t),3); let y=13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t); let z=(Math.random()-0.5)*4;
+                const r=Math.sqrt(Math.random()); x*=r; y*=r; z*=r;
+                targetPositions[i*3]=x; targetPositions[i*3+1]=y; targetPositions[i*3+2]=z;
+                targetColors[i*3]=c.r; targetColors[i*3+1]=c.g; targetColors[i*3+2]=c.b;
             }
         }
 
@@ -271,22 +289,15 @@
             return new Promise((resolve) => {
                 loader.load('https://unpkg.com/three@0.160.0/examples/fonts/helvetiker_bold.typeface.json', function (font) {
                     const textGeo = new TextGeometry('I LOVE YOU\n   WULAN', {
-                        font: font,
-                        size: 5.0,
-                        height: 0, 
-                        curveSegments: 4,
-                        bevelEnabled: false
+                        font: font, size: 5.0, height: 0, curveSegments: 3, bevelEnabled: false
                     });
                     textGeo.center();
-                    const mesh = new THREE.Mesh(textGeo, new THREE.MeshBasicMaterial());
-                    const sampler = new MeshSurfaceSampler(mesh).build();
+                    const sampler = new MeshSurfaceSampler(new THREE.Mesh(textGeo)).build();
                     textPointsCache = new Float32Array(PARTICLE_COUNT * 3);
-                    const tempVec = new THREE.Vector3();
+                    const v = new THREE.Vector3();
                     for (let i = 0; i < PARTICLE_COUNT; i++) {
-                        sampler.sample(tempVec);
-                        textPointsCache[i * 3] = tempVec.x;
-                        textPointsCache[i * 3 + 1] = tempVec.y;
-                        textPointsCache[i * 3 + 2] = tempVec.z;
+                        sampler.sample(v);
+                        textPointsCache[i*3]=v.x; textPointsCache[i*3+1]=v.y; textPointsCache[i*3+2]=v.z;
                     }
                     resolve();
                 });
@@ -294,23 +305,114 @@
         }
 
         function setShapeText() {
-            if (!textPointsCache) return;
-            const colorTop = new THREE.Color(0xffd700);
-            const colorBot = new THREE.Color(0xff00ff);
+            if(!textPointsCache) return;
+            const c1 = new THREE.Color(0xffd700); const c2 = new THREE.Color(0xff00ff);
+            for(let i=0; i<PARTICLE_COUNT; i++) {
+                targetPositions[i*3]=textPointsCache[i*3]; targetPositions[i*3+1]=textPointsCache[i*3+1]; targetPositions[i*3+2]=textPointsCache[i*3+2];
+                const c = textPointsCache[i*3+1] > 0 ? c1 : c2;
+                targetColors[i*3]=c.r; targetColors[i*3+1]=c.g; targetColors[i*3+2]=c.b;
+            }
+        }
 
-            for (let i = 0; i < PARTICLE_COUNT; i++) {
-                const px = textPointsCache[i * 3];
-                const py = textPointsCache[i * 3 + 1];
-                const pz = textPointsCache[i * 3 + 2];
-                targetPositions[i * 3] = px;
-                targetPositions[i * 3 + 1] = py;
-                targetPositions[i * 3 + 2] = pz;
+        // --- DIRECT AI & VOICE LOGIC ---
+        
+        window.toggleVoice = () => {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) return alert("Browser not supported. Use Chrome/Edge.");
+            
+            const recognition = new SpeechRecognition();
+            const btn = document.getElementById('mic-btn');
+            const input = document.getElementById('ai-prompt');
+            
+            recognition.lang = 'en-US'; // Or 'id-ID' if you prefer
+            recognition.start();
 
-                if (py > 0) {
-                     targetColors[i * 3] = colorTop.r; targetColors[i * 3 + 1] = colorTop.g; targetColors[i * 3 + 2] = colorTop.b;
-                } else {
-                     targetColors[i * 3] = colorBot.r; targetColors[i * 3 + 1] = colorBot.g; targetColors[i * 3 + 2] = colorBot.b;
-                }
+            btn.classList.add('mic-active');
+            input.placeholder = "Listening...";
+
+            recognition.onresult = (event) => {
+                const text = event.results[0][0].transcript;
+                input.value = text;
+                btn.classList.remove('mic-active');
+                triggerAI(); // Auto send
+            };
+
+            recognition.onerror = () => {
+                btn.classList.remove('mic-active');
+                input.placeholder = "Error. Try typing.";
+            };
+            
+            recognition.onend = () => {
+                btn.classList.remove('mic-active');
+            };
+        }
+
+        window.triggerAI = async () => {
+            const prompt = document.getElementById('ai-prompt').value;
+            const key = localStorage.getItem('geminiKey');
+            const status = document.getElementById('status-text');
+            const btn = document.getElementById('send-btn');
+
+            if(!key) return openKeyModal();
+            if(!prompt) return;
+
+            isAIProcessing = true;
+            status.innerText = "AI THINKING...";
+            status.className = "text-xs font-bold text-purple-400 animate-pulse";
+            btn.innerHTML = "⌛";
+
+            const systemPrompt = `
+            Act as a 3D Math Expert.
+            User wants shape: "${prompt}".
+            Provide ONLY raw JavaScript loop body code to calculate 'x', 'y', 'z' (positions) and 'r', 'g', 'b' (colors 0-1).
+            Context: Loop 'i' from 0 to 'count' (${PARTICLE_COUNT}). 
+            Arrays: targetPositions[i*3...], targetColors[i*3...].
+            Scale approx 15-20. Use Math.sin/cos/random.
+            NO markdown, NO comments, NO functions. Just the math lines.
+            `;
+
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({contents: [{parts: [{text: systemPrompt}]}]})
+                });
+
+                const data = await res.json();
+                if(data.error) throw new Error(data.error.message);
+
+                let code = data.candidates[0].content.parts[0].text;
+                code = code.replace(/```javascript|```/g, '').trim();
+
+                // Execute Safe Function
+                const func = new Function('targetPositions', 'targetColors', 'count', `
+                    for(let i=0; i<count; i++) {
+                        let x=0, y=0, z=0, r=1, g=1, b=1;
+                        ${code}
+                        // Assign
+                        targetPositions[i*3] = x;
+                        targetPositions[i*3+1] = y;
+                        targetPositions[i*3+2] = z;
+                        targetColors[i*3] = r;
+                        targetColors[i*3+1] = g;
+                        targetColors[i*3+2] = b;
+                    }
+                `);
+
+                func(targetPositions, targetColors, PARTICLE_COUNT);
+                
+                currentShape = 'ai';
+                status.innerText = `AI: ${prompt.toUpperCase()}`;
+                status.className = "text-xs font-bold text-purple-400";
+                
+            } catch(e) {
+                console.error(e);
+                status.innerText = "AI ERROR";
+                status.className = "text-xs font-bold text-red-500";
+                if(e.message.includes('API')) { localStorage.removeItem('geminiKey'); openKeyModal(); }
+            } finally {
+                isAIProcessing = false;
+                btn.innerHTML = "✨";
             }
         }
 
@@ -320,48 +422,46 @@
             const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
             hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
             hands.onResults((results) => {
-                const status = document.getElementById('tracking-status');
+                const dot = document.getElementById('tracking-dot');
+                const gText = document.getElementById('gesture-text');
+                const status = document.getElementById('status-text');
+
                 if(results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                    status.classList.replace('bg-red-500', 'bg-green-500');
-                    detectGesture(results.multiHandLandmarks[0]);
+                    dot.className = "absolute bottom-1 right-1 w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_#22c55e]";
+                    detectGesture(results.multiHandLandmarks[0], gText, status);
                 } else {
-                    status.classList.replace('bg-green-500', 'bg-red-500');
+                    dot.className = "absolute bottom-1 right-1 w-2 h-2 bg-red-500 rounded-full";
+                    gText.innerText = "NO HAND";
                 }
             });
             const cam = new Camera(videoElement, { onFrame: async () => { await hands.send({image: videoElement}); }, width: 640, height: 480 });
             cam.start();
         }
 
-        function detectGesture(lm) {
-            if(isAIActive) return;
-            const label = document.getElementById('gesture-label');
+        function detectGesture(lm, gText, status) {
+            if(isAIProcessing || currentShape === 'ai') return; // AI Overrides gestures until user resets
+
             const tips = [8, 12, 16, 20];
             const fingersUp = tips.map(t => lm[t].y < lm[t-2].y);
-            
-            const indexUp = fingersUp[0];
-            const middleUp = fingersUp[1];
-            const ringUp = fingersUp[2];
-            const pinkyUp = fingersUp[3];
             const pinch = Math.hypot(lm[4].x - lm[8].x, lm[4].y - lm[8].y) < 0.05;
 
             let shape = currentShape;
-            let txt = label.innerText;
-            let col = "";
+            let txt = gText.innerText;
 
             if (pinch) {
-                shape = 'heart'; txt = "HEART FOR WULAN"; col = "text-pink-500";
-            } else if (!indexUp && !middleUp && !ringUp && !pinkyUp) {
-                shape = 'saturn'; txt = "SATURN MODE"; col = "text-blue-500";
-            } else if (indexUp && middleUp && !ringUp && !pinkyUp) {
-                shape = 'text'; txt = "I LOVE YOU WULAN"; col = "text-yellow-400";
-            } else if (indexUp && middleUp && ringUp && pinkyUp) {
-                shape = 'rainbow'; txt = "RAINBOW SPHERE"; col = "text-green-400";
+                shape = 'heart'; txt = "Gesture: Heart";
+            } else if (!fingersUp[0] && !fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
+                shape = 'saturn'; txt = "Gesture: Fist (Saturn)";
+            } else if (fingersUp[0] && fingersUp[1] && !fingersUp[2] && !fingersUp[3]) {
+                shape = 'text'; txt = "Gesture: Peace (Text)";
+            } else if (fingersUp[0] && fingersUp[1] && fingersUp[2] && fingersUp[3]) {
+                shape = 'rainbow'; txt = "Gesture: Open (Rainbow)";
             }
 
             if (shape !== currentShape) {
                 currentShape = shape;
-                label.innerText = txt;
-                label.className = `glass px-6 py-2 rounded-full text-sm font-bold tracking-wider shadow-lg transition-all ${col}`;
+                status.innerText = shape.toUpperCase();
+                gText.innerText = txt;
                 
                 if(shape === 'heart') setShapeHeart();
                 if(shape === 'saturn') setShapeSaturn();
@@ -370,57 +470,30 @@
             }
         }
 
-        // --- AI ---
-        window.toggleMagicModal = () => { document.getElementById('magic-modal').classList.toggle('hidden'); }
-
-        window.generateAI = async () => {
-            const k = document.getElementById('gemini-key').value;
-            const p = document.getElementById('ai-prompt').value;
-            const b = document.getElementById('generate-btn');
-            if(!k || !p) return alert('Key & Prompt Needed');
-            b.innerText = "...";
-            try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${k}`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({contents: [{parts: [{text: `JS loop code for particles (i, count, targetPositions, targetColors) for shape: ${p}. raw math only.`}]}]})
-                });
-                const d = await res.json();
-                let c = d.candidates[0].content.parts[0].text.replace(/```javascript|```/g, '');
-                new Function('targetPositions', 'targetColors', 'count', `for(let i=0;i<count;i++){${c}}`)(targetPositions, targetColors, PARTICLE_COUNT);
-                isAIActive = true; currentShape = 'ai'; toggleMagicModal();
-            } catch(e){ alert('Error'); } 
-            b.innerText = "GENERATE";
-        }
-
+        // --- LOOP ---
         function animate() {
             requestAnimationFrame(animate);
-            
-            // UPDATE CONTROLS (Important for Damping)
             controls.update();
+
+            const pAttr = points.geometry.attributes.position;
+            const cAttr = points.geometry.attributes.color;
 
             for (let i = 0; i < PARTICLE_COUNT * 3; i++) {
                 positions[i] += (targetPositions[i] - positions[i]) * 0.08;
                 colors[i] += (targetColors[i] - colors[i]) * 0.08;
             }
             
-            geometry.attributes.position.needsUpdate = true;
-            geometry.attributes.color.needsUpdate = true;
+            pAttr.needsUpdate = true;
+            cAttr.needsUpdate = true;
             
-            // Auto rotate the object slightly for effect, user can still rotate camera
-            if(currentShape !== 'text') {
-                points.rotation.y += 0.002;
+            // Text sway vs Object spin
+            if(currentShape === 'text') {
+                points.rotation.y = Math.sin(Date.now() * 0.001) * 0.15;
             } else {
-                points.rotation.y = Math.sin(Date.now() * 0.001) * 0.1;
+                points.rotation.y += 0.002;
             }
             
             composer.render();
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            composer.setSize(window.innerWidth, window.innerHeight);
         }
 
         init();
